@@ -204,7 +204,13 @@ export default function App() {
 
   // Auth Listener
   useEffect(() => {
+    const authTimeout = window.setTimeout(() => {
+      console.warn('Auth state observer timeout: forcing UI render.');
+      setLoading(false);
+    }, 10000);
+
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      window.clearTimeout(authTimeout);
       setUser(u);
       if (u) {
         let userData: UserProfile;

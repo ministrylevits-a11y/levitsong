@@ -1,14 +1,22 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence, clearIndexedDbPersistence } from 'firebase/firestore';
+import firebaseConfigLocal from '../firebase-applet-config.json';
+
+const getConfigValue = (envValue: string | undefined, localValue: string | undefined): string => {
+  if (envValue && envValue !== 'undefined' && envValue !== 'null' && envValue.trim() !== '') {
+    return envValue;
+  }
+  return localValue || '';
+};
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: getConfigValue(import.meta.env.VITE_FIREBASE_API_KEY, firebaseConfigLocal?.apiKey),
+  authDomain: getConfigValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN, firebaseConfigLocal?.authDomain),
+  projectId: getConfigValue(import.meta.env.VITE_FIREBASE_PROJECT_ID, firebaseConfigLocal?.projectId),
+  storageBucket: getConfigValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET, firebaseConfigLocal?.storageBucket),
+  messagingSenderId: getConfigValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID, firebaseConfigLocal?.messagingSenderId),
+  appId: getConfigValue(import.meta.env.VITE_FIREBASE_APP_ID, firebaseConfigLocal?.appId),
 };
 
 if (!firebaseConfig.apiKey) {
@@ -17,16 +25,21 @@ if (!firebaseConfig.apiKey) {
 
 const app = initializeApp(firebaseConfig);
 
-const rawFirestoreDatabaseId = import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID;
-const firestoreDatabaseId = rawFirestoreDatabaseId && !rawFirestoreDatabaseId.includes('/')
-  ? rawFirestoreDatabaseId
-  : undefined;
+const getValidFirestoreDatabaseId = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (trimmed === '' || trimmed.includes('/')) return undefined;
+  return trimmed;
+};
 
-if (rawFirestoreDatabaseId && !firestoreDatabaseId) {
-  console.warn(
-    'Ignored invalid Firestore database id; use the Firestore database name, not a Realtime Database URL:',
-    rawFirestoreDatabaseId
-  );
+const envFirestoreDatabaseId = getValidFirestoreDatabaseId(import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID);
+const localFirestoreDatabaseId = getValidFirestoreDatabaseId(firebaseConfigLocal?.firestoreDatabaseId);
+const firestoreDatabaseId = envFirestoreDatabaseId ?? localFirestoreDatabaseId;
+
+if (!firestoreDatabaseId) {
+  console.warn('No valid Firestore database id found. Using default Firestore instance.');
+} else {
+  console.log('Using Firestore database id:', firestoreDatabaseId);
 }
 
 export const db = firestoreDatabaseId
@@ -35,14 +48,12 @@ export const db = firestoreDatabaseId
 
 export const auth = getAuth(app);
 
-// Clear any corrupted IndexedDB persistence first
 clearIndexedDbPersistence(db).then(() => {
   console.log('Cleared IndexedDB persistence to fix corrupted data');
 }).catch((err) => {
   console.warn('Failed to clear IndexedDB persistence:', err);
 });
 
-// Enable IndexedDB persistence
 enableIndexedDbPersistence(db).catch((err: any) => {
   if (err.code === 'failed-precondition') {
     console.warn('Firebase persistence failed because multiple tabs are open.', err);
