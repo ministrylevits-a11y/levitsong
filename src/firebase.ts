@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import firebaseConfigLocal from '../firebase-applet-config.json';
 
 // Helper to get a valid configuration value, prioritizing environment variables
@@ -30,3 +30,13 @@ if (!firebaseConfig.apiKey) {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firestoreDatabaseId || undefined);
 export const auth = getAuth(app);
+
+enableIndexedDbPersistence(db).catch((err: any) => {
+  if (err.code === 'failed-precondition') {
+    console.warn('Firebase persistence failed because multiple tabs are open.', err);
+  } else if (err.code === 'unimplemented') {
+    console.warn('Firebase persistence is not supported by this browser.', err);
+  } else {
+    console.warn('Firebase persistence error:', err);
+  }
+});

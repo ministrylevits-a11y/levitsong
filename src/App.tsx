@@ -207,10 +207,16 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        const userDoc = await getDoc(doc(db, 'users', u.uid));
         let userData: UserProfile;
-        
-        if (!userDoc.exists()) {
+        let userDoc;
+
+        try {
+          userDoc = await getDoc(doc(db, 'users', u.uid));
+        } catch (err) {
+          console.warn('Unable to fetch Firestore user document, using offline fallback:', err);
+        }
+
+        if (!userDoc?.exists()) {
           userData = {
             uid: u.uid,
             email: u.email || '',
@@ -220,10 +226,20 @@ export default function App() {
             createdAt: new Date().toISOString(),
             isVerified: false
           };
-          await setDoc(doc(db, 'users', u.uid), userData);
+
+          if (navigator.onLine) {
+            try {
+              await setDoc(doc(db, 'users', u.uid), userData);
+            } catch (err) {
+              console.warn('Unable to save new Firestore user profile while online:', err);
+            }
+          } else {
+            console.warn('Offline: using local user profile fallback and waiting for connectivity to sync.');
+          }
         } else {
           userData = userDoc.data() as UserProfile;
         }
+
         setProfile(userData);
         fetchHistory(u.uid);
       } else {
@@ -246,6 +262,9 @@ export default function App() {
         if (isAdmin) {
           setPendingSongs(songsData.filter(s => s.status === 'pending'));
         }
+      },
+      (err) => {
+        console.warn('Firestore songs snapshot error:', err);
       }
     );
 
@@ -253,13 +272,22 @@ export default function App() {
     let assessmentsUnsubscribe: () => void = () => {};
 
     if (isAdmin) {
-      usersUnsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-        setAllUsers(snapshot.docs.map(d => d.data() as UserProfile));
-      });
+      usersUnsubscribe = onSnapshot(
+        collection(db, 'users'),
+        (snapshot) => {
+          setAllUsers(snapshot.docs.map(d => d.data() as UserProfile));
+        },
+        (err) => {
+          console.warn('Firestore users snapshot error:', err);
+        }
+      );
       assessmentsUnsubscribe = onSnapshot(
         query(collection(db, 'assessments'), orderBy('completedAt', 'desc'), limit(50)),
         (snapshot) => {
           setAllAssessments(snapshot.docs.map(d => d.data() as AssessmentResult));
+        },
+        (err) => {
+          console.warn('Firestore assessments snapshot error:', err);
         }
       );
     }
