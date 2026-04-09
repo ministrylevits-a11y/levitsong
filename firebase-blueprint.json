@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "student"] },
+        "bio": { "type": "string" },
+        "phone": { "type": "string" },
+        "instrument": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "Song": {
+      "title": "Song",
+      "description": "A song with lyrics and chords",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "artist": { "type": "string" },
+        "content": { "type": "string" },
+        "originalKey": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorEmail": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "originalKey", "authorId", "status"]
+    },
+    "Assessment": {
+      "title": "Assessment",
+      "description": "A completed music theory assessment",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "score": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "topic": { "type": "string" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "timeSpent": { "type": "number" },
+        "answers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "questionId": { "type": "string" },
+              "selectedOption": { "type": "number" },
+              "isCorrect": { "type": "boolean" }
+            }
+          }
+        }
+      },
+      "required": ["userId", "score", "totalQuestions", "completedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/assessments/{assessmentId}": {
+      "schema": "Assessment",
+      "description": "Completed quiz results"
+    },
+    "/songs/{songId}": {
+      "schema": "Song",
+      "description": "Songs with chords"
+    }
+  }
+}
