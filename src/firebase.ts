@@ -20,7 +20,17 @@ const firebaseConfig = {
   appId: getConfigValue(import.meta.env.VITE_FIREBASE_APP_ID, firebaseConfigLocal?.appId),
 };
 
-const firestoreDatabaseId = getConfigValue(import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID, firebaseConfigLocal?.firestoreDatabaseId);
+const rawFirestoreDatabaseId = getConfigValue(import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID, firebaseConfigLocal?.firestoreDatabaseId);
+const firestoreDatabaseId = rawFirestoreDatabaseId && !rawFirestoreDatabaseId.includes('/')
+  ? rawFirestoreDatabaseId
+  : undefined;
+
+if (rawFirestoreDatabaseId && !firestoreDatabaseId) {
+  console.warn(
+    'Ignored invalid Firestore database id; use the Firestore database name, not a Realtime Database URL:',
+    rawFirestoreDatabaseId
+  );
+}
 
 // Validate that we have at least an API Key before initializing
 if (!firebaseConfig.apiKey) {
@@ -28,7 +38,7 @@ if (!firebaseConfig.apiKey) {
 }
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firestoreDatabaseId || undefined);
+export const db = firestoreDatabaseId ? getFirestore(app, firestoreDatabaseId) : getFirestore(app);
 export const auth = getAuth(app);
 
 enableIndexedDbPersistence(db).catch((err: any) => {
